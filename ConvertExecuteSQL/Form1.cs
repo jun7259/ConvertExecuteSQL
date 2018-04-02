@@ -98,6 +98,13 @@ namespace ConvertExecuteSQL
 
         private static string ConvertSql(string origSql)
         {
+            var tableParameterSql = string.Empty;
+            var indexOf = origSql.IndexOf("exec sp_executesql");    // origSql.Substring(0, origSql.IndexOf("exec sp_executesql") - 1);
+            if (indexOf > 0)
+            {
+                tableParameterSql = origSql.Substring(0, origSql.IndexOf("exec sp_executesql") - 1);
+                origSql = origSql.Substring(origSql.IndexOf("exec sp_executesql"));
+            }
             string tmp = origSql.Replace("''", "~~");       // Temporary replacement to simplify matching isolated single quotes
             string baseSql;
             string paramTypes = "";
@@ -127,7 +134,15 @@ namespace ConvertExecuteSQL
                 foreach (string paramValue in paramList)
                 {
                     if (!paramValue.Contains("@")) continue;
-                    sb.AppendLine("set " + paramValue.Replace("~~", "''"));
+                    if (paramValue.Split('=').Last().Contains("@"))
+                    {
+                        var oldParam = tableParameterSql.Split(' ').Where(x => x.Contains("@")).First();
+                        sb.AppendLine(tableParameterSql.Replace(oldParam, paramValue.Split('=').First()));
+                    }
+                    else
+                    {
+                        sb.AppendLine("set " + paramValue.Replace("~~", "''"));
+                    }
                 }
                 sb.AppendLine(baseSql);
                 return sb.ToString();
